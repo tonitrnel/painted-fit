@@ -1,0 +1,56 @@
+const CRC_TABLE: [u16; 16] = [
+    0x0000, 0xCC01, 0xD801, 0x1400, 0xF001, 0x3C00, 0x2800, 0xE401, 0xA001, 0x6C00, 0x7800, 0xB401,
+    0x5000, 0x9C01, 0x8801, 0x4400,
+];
+
+pub fn crc_16(bytes: &[u8]) -> u16 {
+    crc_16_update(0, bytes)
+}
+pub fn crc_16_update(value: u16, bytes: &[u8]) -> u16 {
+    let mut value = value;
+    for byte in bytes {
+        // compute checksum of lower four bits of byte
+        let tmp = CRC_TABLE[(value & 0xF) as usize];
+        value = (value >> 4) & 0x0FFF;
+        value = value ^ tmp ^ CRC_TABLE[(byte & 0xF) as usize];
+
+        // compute checksum of upper four bits of byte
+        let tmp = CRC_TABLE[(value & 0xF) as usize];
+        value = (value >> 4) & 0x0FFF;
+        value = value ^ tmp ^ CRC_TABLE[((byte >> 4) & 0xF) as usize];
+    }
+    value
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const FIT_FILE_SHORT: [u8; 52] = [
+        0x0E, 0x20, 0x8B, 0x08, 0x24, 0x00, 0x00, 0x00, 0x2E, 0x46, 0x49, 0x54, 0x8E,
+        0xA3, // File Header
+        0x40, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x01, 0x00, 0x01, 0x02, 0x84, 0x04, 0x04, 0x86,
+        0x08, 0x0A, 0x07, // Message Definition
+        0x00, 0x04, 0x01, 0x00, 0x00, 0xCA, 0x9A, 0x3B, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67,
+        0x68, 0x69, 0x00, // Message
+        0x5D, 0xF2,
+    ];
+    #[test]
+    fn header_crc_should_be_correct() {
+        assert_eq!(crc_16(&FIT_FILE_SHORT[0..12]), 0xA38E)
+    }
+
+    #[test]
+    fn file_crc_should_be_correct() {
+        assert_eq!(crc_16(&FIT_FILE_SHORT[0..FIT_FILE_SHORT.len() - 2]), 0xF25D)
+    }
+
+    #[test]
+    fn file_crc_should_not_be_correct() {
+        let buf: [u8; 16] = [
+            0x0E, 0x10, 0xD9, 0x07, 0x00, 0x00, 0x00, 0x00, 0x2C, 0x46, 0x49, 0x54, 0x91, 0x33,
+            0x00, 0x00,
+        ];
+        assert_ne!(crc_16(&buf[0..14]), 0x0000)
+    }
+}
