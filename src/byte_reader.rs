@@ -26,6 +26,7 @@ impl<'input> ByteReader<'input> {
     pub(crate) fn new(bytes: &'input [u8]) -> Self {
         Self { bytes, offset: 0 }
     }
+    #[allow(unused)]
     pub(crate) fn len(&self) -> usize {
         self.bytes.len()
     }
@@ -36,9 +37,6 @@ impl<'input> ByteReader<'input> {
         let bytes = &self.bytes[self.offset..self.offset + len];
         self.offset += len;
         bytes
-    }
-    pub(crate) fn peek_bytes(&self, len: usize) -> &'input [u8] {
-        &self.bytes[self.offset..self.offset + len]
     }
     pub(crate) fn is_end(&self) -> bool {
         self.offset >= self.bytes.len() - 1

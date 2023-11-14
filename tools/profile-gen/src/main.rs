@@ -25,10 +25,26 @@ fn main() {
     }
     let profile = parser::process_profile(&profile_path);
     writer::process_types(&profile.types);
-    writer::process_messages(&profile.messages);
+    writer::process_messages(&profile.messages, &profile.types);
     println!(
         "types size = {} messages size = {}",
         profile.types.len(),
         profile.messages.len()
     );
+    // for message in &profile.messages {
+    //     for field in &message.fields {
+    //         if field.accumulate {
+    //             println!("{}/{}", message.name, field.field_name);
+    //         }
+    //         for (_, component) in &field.components {
+    //             if field.accumulate {
+    //                 println!(
+    //                     "{}/{}/{}",
+    //                     message.name, field.field_name, component.field_name
+    //                 );
+    //             }
+    //         }
+    //     }
+    // }
+    // println!("喵喵喵?");
 }

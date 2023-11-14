@@ -6,6 +6,8 @@
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/tools/generate-profile/generate-profile/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/tools/profile-gen/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/decode/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/tests" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludeFolder url="file://$MODULE_DIR$/tools/generate-profile/generate-profile/target" />
       <excludeFolder url="file://$MODULE_DIR$/tools/profile-gen/target" />

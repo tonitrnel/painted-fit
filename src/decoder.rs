@@ -4,21 +4,28 @@ use crate::fit;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-struct DecoderOptions {
-    expand_sub_fields: bool,
-    expand_components: bool,
-    apply_scale_and_offset: bool,
-    convert_types_to_string: bool,
-    merge_heart_rates: bool,
+macro_rules! fit_value_covert {
+    ($value: expr, $variant: ident) => {
+        $value
+            .and_then(|it| {
+                if let fit::Value::$variant(val) = it {
+                    Some(*val)
+                } else {
+                    None
+                }
+            })
+            .unwrap()
+    };
 }
+
 #[derive(Debug, Clone)]
-struct FitFileHeader {
-    header_size: u32,
-    protocol_version: u8,
-    profile_version: u16,
-    data_size: u32,
-    data_type: String,
-    header_crc: u16,
+pub struct FitFileHeader {
+    pub header_size: u32,
+    pub protocol_version: u8,
+    pub profile_version: u16,
+    pub data_size: u32,
+    pub data_type: String,
+    pub header_crc: u16,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -65,18 +72,11 @@ struct FieldDefinition {
     base_type: fit::BaseType,
 }
 #[derive(Debug, Clone)]
+#[allow(unused)]
 struct DeveloperFieldDefinition {
     field_number: u8,
     size: u8,
     developer_data_index: u8,
-}
-
-#[derive(Debug, Clone)]
-struct FitProfileMessage {
-    name: String,
-    message_key: String,
-    number: u8,
-    fields: HashMap<u8, u8>,
 }
 
 #[derive(Debug, Clone)]
@@ -96,21 +96,36 @@ struct FitDataMessage {
     developer_fields: Vec<fit::Value>,
 }
 
-const CRC_SIZE: u32 = 2;
-
-struct Decoder<'input> {
-    reader: ByteReader<'input>,
-    defs: HashMap<u8, Arc<FitDefinitionMessage>>,
+#[derive(Debug, Clone)]
+struct FitDeveloperDataDefinition {
+    developer_id: Option<fit::Value>,
+    application_id: Option<fit::Value>,
+    manufacturer_id: Option<fit::Value>,
+    developer_data_index: u8,
+    application_version: u32,
+    field_map: HashMap<u8, HashMap<&'static str, fit::Value>>,
 }
 
+const CRC_SIZE: u32 = 2;
+
+pub struct Decoder<'input> {
+    reader: ByteReader<'input>,
+    defs: HashMap<u8, Arc<FitDefinitionMessage>>,
+    dev_data_defs: HashMap<u8, FitDeveloperDataDefinition>,
+}
+
+pub type Record = HashMap<&'static str, fit::Value>;
+pub type Messages = HashMap<String, Vec<Record>>;
+
 impl<'input> Decoder<'input> {
-    fn new(bytes: &'input [u8]) -> Self {
+    pub fn new(bytes: &'input [u8]) -> Self {
         Decoder {
             reader: bytes.into(),
             defs: HashMap::new(),
+            dev_data_defs: HashMap::new(),
         }
     }
-    fn read_file_header(&mut self) -> FitFileHeader {
+    pub fn read_file_header(&mut self) -> FitFileHeader {
         self.reader.reset();
         let header_size = self.reader.read_next_u8();
         let protocol_version = self.reader.read_next_u8();
@@ -132,7 +147,7 @@ impl<'input> Decoder<'input> {
         }
     }
     /// 检查头以确定是否是 FIT 文件
-    fn is_fit(bytes: &[u8]) -> bool {
+    pub fn is_fit(bytes: &[u8]) -> bool {
         if bytes[0] != 0x0E && bytes[0] != 0x0C {
             return false;
         }
@@ -145,7 +160,7 @@ impl<'input> Decoder<'input> {
         true
     }
     /// 检查是否为 FIT 文件并验证 Header 和 CRC
-    fn check_integrity(&self, header: &FitFileHeader) -> bool {
+    pub fn check_integrity(&self, header: &FitFileHeader) -> bool {
         if self.reader.len() < (header.header_size + header.data_size + CRC_SIZE) as usize {
             return false;
         }
@@ -166,15 +181,16 @@ impl<'input> Decoder<'input> {
         true
     }
     /// 阅读信息
-    fn read(&mut self) {
+    pub fn read(&mut self) -> Messages {
         self.reader.reset();
+        let mut messages: Messages = HashMap::new();
         while !self.reader.is_end() {
-            self.read_next_record();
+            self.read_next_record(&mut messages);
         }
+        messages
     }
-    fn read_next_record(&mut self) {
+    fn read_next_record(&mut self, messages: &mut Messages) {
         let start = self.reader.offset();
-        // println!("read next record, start at {}", start);
         if !Decoder::is_fit(&self.reader[start..]) {
             panic!("Error: input is not a FIT file")
         };
@@ -184,17 +200,22 @@ impl<'input> Decoder<'input> {
             let message = self.read_fit_message();
             match message {
                 FitMessage::Definition(message) => {
-                    // println!(
-                    //     "[->] Definition G[{}] L[{}] defs: {} developer_defs: {}",
-                    //     message.global_message_number,
-                    //     message.local_message_number,
-                    //     message.field_definitions.len(),
-                    //     message.developer_field_definitions.len()
-                    // );
                     self.defs
                         .insert(message.local_message_number, Arc::new(message));
                 }
-                FitMessage::Data(message) => decode_message(message),
+                FitMessage::Data(message) => {
+                    let result = self.decode_message(message);
+                    let (name, record) = if let Some(result) = result {
+                        result
+                    } else {
+                        continue;
+                    };
+                    if let Some(records) = messages.get_mut(&name) {
+                        records.push(record);
+                    } else {
+                        messages.insert(name, vec![record]);
+                    }
+                }
             }
         }
         if self.reader.read_next_u16(false) != crc::crc_16(&self.reader[start..end]) {
@@ -265,22 +286,29 @@ impl<'input> Decoder<'input> {
 
         let mut fields = HashMap::new();
         for field_def in &def.field_definitions {
-            let value = self.read_field_value(
+            match self.read_field_value(
                 field_def.size as usize,
                 field_def.base_type,
                 def.architecture.is_big_endian(),
-            );
-            fields.insert(field_def.field_definition_number, value);
+            ) {
+                Ok(value) => {
+                    fields.insert(field_def.field_definition_number, value);
+                }
+                // skip invalid field
+                Err(err) => eprintln!("WARNING: {err}"),
+            }
         }
 
         let mut developer_fields = Vec::new();
 
         for field_def in &def.developer_field_definitions {
-            let value = self.read_field_value(
-                field_def.size as usize,
-                fit::BaseType::Byte,
-                def.architecture.is_big_endian(),
-            );
+            let value = self
+                .read_field_value(
+                    field_def.size as usize,
+                    fit::BaseType::Byte,
+                    def.architecture.is_big_endian(),
+                )
+                .unwrap();
             developer_fields.push(value);
         }
         FitDataMessage {
@@ -295,7 +323,7 @@ impl<'input> Decoder<'input> {
         size: usize,
         base_type: fit::BaseType,
         is_big_endian: bool,
-    ) -> fit::Value {
+    ) -> Result<fit::Value, String> {
         use fit::{BaseType, Value};
         if size % base_type.size() as usize != 0 {
             panic!("ERROR: field size: {} is not a multiple of the base type {:?} (size {}) parsing as a byte array", size, base_type, base_type.size());
@@ -341,9 +369,10 @@ impl<'input> Decoder<'input> {
             Value::Array(values)
         };
         if !value.is_valid() {
-            panic!("ERROR: invalid field value");
+            Err(format!("Invalid field value {:?}", value))
+        } else {
+            Ok(value)
         }
-        value
     }
     /// Read definition message
     ///
@@ -424,43 +453,133 @@ impl<'input> Decoder<'input> {
             developer_field_definitions,
         }
     }
-}
-fn decode_message(message: FitDataMessage) {
-    let message_type =
-        crate::profile::types::MesgNum::try_from(fit::Value::UInt16(message.global_message_number))
-            .unwrap_or_else(|_| panic!("Cannot find message definition in profile"))
-            .to_string();
-    if message_type != "file_id" {
-        return;
-    }
-    println!("message type: {}", message_type);
-    let message_map = crate::profile::messages::from_str(&message_type);
-    if let Some(message_map) = message_map {
-        for (field_def_number, val) in message.fields.iter() {
-            println!(
-                "field_def_number = {field_def_number} val = {val:?} => {:?}",
-                message_map.get(field_def_number)
-            );
+    fn decode_message(&mut self, message: FitDataMessage) -> Option<(String, Record)> {
+        use crate::profile::{messages, types};
+        let mut accumulator = crate::accumulator::Accumulator::new();
+        let msg_ty = types::MesgNum::try_from(&fit::Value::UInt16(message.global_message_number))
+            .unwrap_or_else(|_| panic!("Cannot find message definition in profile"));
+        if msg_ty == types::MesgNum::DeviceInfo {
+            println!("{:#?}", message);
         }
-    } else {
-        panic!("Cannot find message in profile")
-    }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::io::Read;
-    #[test]
-    fn it_works() {
-        use std::fs::File;
-        let mut fp = File::open("examples/Activity.fit").unwrap();
-        let mut buffer = Vec::new();
-        fp.read_to_end(&mut buffer).expect("Read file failed");
-        println!("is_fit = {}", Decoder::is_fit(&buffer));
-        let mut decoder = Decoder::new(&buffer);
-        let header = decoder.read_file_header();
-        println!("check_integrity = {}", decoder.check_integrity(&header));
-        println!("{:#?}", header);
-        decoder.read();
+        let decode = messages::from_message_type(&msg_ty.to_string());
+        if let Some(decode) = decode {
+            let mut message_map = HashMap::new();
+            for (field_def_number, val) in message.fields.iter() {
+                decode(
+                    &mut message_map,
+                    &mut accumulator,
+                    messages::MessageDecodeArgs {
+                        msg_ty: &msg_ty,
+                        msg_no: message.global_message_number,
+                        field_no: *field_def_number,
+                        value: val,
+                        fields: &message.fields,
+                    },
+                )
+                .unwrap();
+            }
+            if msg_ty == types::MesgNum::DeveloperDataId {
+                let developer_data_map = message_map
+                    .into_iter()
+                    .map(|(name, field)| match name {
+                        "manufacturer_id" => (
+                            name,
+                            fit::Value::String(
+                                types::Manufacturer::try_from(&field.value)
+                                    .unwrap()
+                                    .to_string(),
+                            ),
+                        ),
+                        _ => (name, field.value),
+                    })
+                    .collect::<HashMap<_, _>>();
+                let developer_data_index =
+                    fit_value_covert!(developer_data_map.get("developer_data_index"), UInt8);
+                self.dev_data_defs.insert(
+                    developer_data_index,
+                    FitDeveloperDataDefinition {
+                        developer_data_index,
+                        developer_id: developer_data_map
+                            .get("developer_id")
+                            .map(|it| it.to_owned()),
+                        application_id: developer_data_map
+                            .get("application_id")
+                            .map(|it| it.to_owned()),
+                        manufacturer_id: developer_data_map
+                            .get("manufacturer_id")
+                            .map(|it| it.to_owned()),
+                        application_version: fit_value_covert!(
+                            developer_data_map.get("application_version"),
+                            UInt32
+                        ),
+                        field_map: HashMap::new(),
+                    },
+                );
+                None
+            } else if msg_ty == types::MesgNum::FieldDescription {
+                let field_def_names = [
+                    "developer_data_index",
+                    "field_definition_number",
+                    "fit_base_type_id",
+                    "field_name",
+                ];
+                if let Some(field_def_name) = field_def_names
+                    .iter()
+                    .find(|&it| !message_map.contains_key(it))
+                {
+                    panic!(
+                        "Invalid developer field definition, missing '{name}' field",
+                        name = field_def_name
+                    )
+                }
+                let field_description_map = message_map
+                    .into_iter()
+                    .map(|(name, field)| match name {
+                        "fit_base_type_id" => (
+                            name,
+                            fit::Value::String(
+                                types::FitBaseType::try_from(&field.value)
+                                    .unwrap()
+                                    .to_string(),
+                            ),
+                        ),
+                        "fit_base_unit_id" => (
+                            name,
+                            fit::Value::String(
+                                types::FitBaseUnit::try_from(&field.value)
+                                    .unwrap()
+                                    .to_string(),
+                            ),
+                        ),
+                        "native_mesg_num" => (
+                            name,
+                            fit::Value::String(
+                                types::MesgNum::try_from(&field.value).unwrap().to_string(),
+                            ),
+                        ),
+                        _ => (name, field.value),
+                    })
+                    .collect::<HashMap<_, _>>();
+                let developer_data_index =
+                    fit_value_covert!(field_description_map.get("developer_data_index"), UInt8);
+                let field_definition_number =
+                    fit_value_covert!(field_description_map.get("field_definition_number"), UInt8);
+                if let Some(def) = self.dev_data_defs.get_mut(&developer_data_index) {
+                    def.field_map
+                        .insert(field_definition_number, field_description_map);
+                }
+                None
+            } else {
+                Some((
+                    msg_ty.to_string(),
+                    message_map
+                        .into_iter()
+                        .map(|(k, v)| (k, v.value))
+                        .collect::<HashMap<_, _>>(),
+                ))
+            }
+        } else {
+            panic!("Cannot find message in profile")
+        }
     }
 }
