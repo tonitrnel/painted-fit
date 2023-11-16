@@ -1,7 +1,6 @@
 use calamine as xlsx;
 use calamine::DataType;
 use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
 use std::str::FromStr;
 
 macro_rules! split_csv_string ( ($value:expr) => ( {$value.split(',').map(|v| v.trim().to_string())} ););
@@ -284,9 +283,10 @@ fn process_components(
     }
     components
 }
-pub(crate) fn process_profile(path: &PathBuf) -> FitProfile {
+pub(crate) fn process_profile(bytes: &[u8]) -> FitProfile {
     use xlsx::Reader;
-    let mut excel: xlsx::Xlsx<_> = xlsx::open_workbook(path).unwrap();
+    let cursor = std::io::Cursor::new(bytes);
+    let mut excel = xlsx::open_workbook_auto_from_rs(cursor).unwrap();
     let types = if let Some(Ok(sheet)) = excel.worksheet_range("Types") {
         process_types(&sheet)
     } else {
