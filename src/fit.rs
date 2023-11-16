@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use std::fmt;
 
 #[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
-pub(crate) enum BaseType {
+pub enum BaseType {
     Enum = 0x00,
     SInt8 = 0x01,
     UInt8 = 0x02,
@@ -23,7 +23,7 @@ pub(crate) enum BaseType {
 }
 
 impl BaseType {
-    pub(crate) fn size(&self) -> u8 {
+    pub fn size(&self) -> u8 {
         match self {
             BaseType::Enum => 1,
             BaseType::SInt8 => 1,
@@ -46,7 +46,7 @@ impl BaseType {
     }
 
     #[allow(unused)]
-    pub(crate) fn invalid(&self) -> usize {
+    pub fn invalid(&self) -> usize {
         match self {
             BaseType::Enum => 0xFF,
             BaseType::SInt8 => 0x7F,
@@ -67,7 +67,7 @@ impl BaseType {
             BaseType::UInt64z => 0x0000_0000_0000_0000,
         }
     }
-    pub(crate) fn is_numeric(&self) -> bool {
+    pub fn is_numeric(&self) -> bool {
         matches!(
             self,
             BaseType::SInt8
@@ -90,7 +90,7 @@ impl BaseType {
 }
 
 impl TryFrom<u8> for BaseType {
-    type Error = &'static str;
+    type Error = String;
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             0x00 => Ok(BaseType::Enum),
@@ -110,7 +110,9 @@ impl TryFrom<u8> for BaseType {
             0x8E => Ok(BaseType::SInt64),
             0x8F => Ok(BaseType::UInt64),
             0x90 => Ok(BaseType::UInt64z),
-            _ => Err("No corresponding fit BaseType exists"),
+            _ => Err(format!(
+                "Value '{value}' does not exist to match fit BaseType"
+            )),
         }
     }
 }
@@ -190,7 +192,7 @@ pub enum Value {
     Array(Vec<Self>),
 }
 impl Value {
-    pub(crate) fn is_valid(&self) -> bool {
+    pub fn is_valid(&self) -> bool {
         match self {
             Value::Enum(val) => *val != 0xFF,
             Value::SInt8(val) => *val != 0x7F,
@@ -216,7 +218,7 @@ impl Value {
         }
     }
 
-    // pub(crate) fn try_as_u8(&self) -> Result<u8, &'static str> {
+    // pub fn try_as_u8(&self) -> Result<u8, &'static str> {
     //     match self {
     //         Value::Enum(v) => Ok(*v),
     //         Value::UInt8(v) => Ok(*v),
@@ -225,7 +227,7 @@ impl Value {
     //         _ => Err("Cannot be converted to 'u8' type."),
     //     }
     // }
-    // pub(crate) fn try_as_f64(&self) -> Result<f64, &'static str> {
+    // pub fn try_as_f64(&self) -> Result<f64, &'static str> {
     //     match self {
     //         Value::SInt8(v) => Ok(*v as f64),
     //         Value::SInt16(v) => Ok(*v as f64),
@@ -246,7 +248,7 @@ impl Value {
     //         _ => Err("Cannot be converted to 'f64' type."),
     //     }
     // }
-    pub(crate) fn try_as_usize(&self) -> Result<usize, &'static str> {
+    pub fn try_as_usize(&self) -> Result<usize, &'static str> {
         match self {
             Value::UInt8(v) => Ok(*v as usize),
             Value::UInt16(v) => Ok(*v as usize),
@@ -261,7 +263,7 @@ impl Value {
     }
 
     #[allow(unused)]
-    pub(crate) fn to_base_type_str(&self) -> &str {
+    pub fn to_base_type_str(&self) -> &str {
         match self {
             Value::Enum(_) => "enum",
             Value::SInt8(_) => "sint8",

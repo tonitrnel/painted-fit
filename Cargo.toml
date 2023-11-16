@@ -4,7 +4,7 @@ description = "Parse Garmin Fit files"
 version = "0.1.0"
 edition = "2021"
 authors = ["Tonitrnel"]
-keywords = ["fit", "parser"]
+keywords = ["fit", "parser", "ant", "garmin", "serde"]
 repository = "https://github.com/tonitrnel/painted-fit"
 license = "MIT"
 include = [
@@ -21,6 +21,7 @@ path = "src/lib.rs"
 
 [dependencies]
 chrono = "0.4.31"
+thiserror = "1.0.50"
 
 [workspace]
 members = [

@@ -7,11 +7,9 @@ fn main() {
     let mut buffer = Vec::new();
     fp.read_to_end(&mut buffer).expect("Read file failed");
     let mut decoder = Decoder::new(&buffer);
-    let header = decoder.read_file_header();
     println!("is_fit = {}", Decoder::is_fit(&buffer));
-    println!("check_integrity = {}", decoder.check_integrity(&header));
-    println!("header = {:#?}", header);
-    let messages = decoder.read();
+    println!("check_integrity = {}", decoder.check_integrity());
+    let (_, messages) = decoder.read().unwrap();
     let records = messages.get("record").unwrap();
     println!("record size = {}", records.len());
     println!("record = {:#?}", records[0])
