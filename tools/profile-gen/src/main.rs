@@ -1,4 +1,5 @@
 mod parser;
+mod process;
 mod writer;
 
 use clap::Parser;
@@ -35,13 +36,14 @@ fn main() {
         Err(err) => panic!("{}", err),
     };
     let profile = parser::process_profile(&bytes);
-    writer::process_types(&profile.types, &version);
-    writer::process_messages(&profile.messages, &profile.types, &version);
-    writer::process_version(&version);
+    process::process_types(&profile.types, &version);
+    process::process_messages(&profile.messages, &profile.types, &version);
+    process::process_version(&version);
     println!(
-        "types size = {} messages size = {}",
+        "Generated {} types and {} messages, current_sdk_version: {}",
         profile.types.len(),
-        profile.messages.len()
+        profile.messages.len(),
+        version
     );
     // for message in &profile.messages {
     //     for field in &message.fields {
@@ -101,11 +103,8 @@ fn read_profile_file(path: &str) -> Result<(Option<String>, Vec<u8>), String> {
             ))
         }
         "xlsx" => {
-            let mut bytes = Vec::new();
-            fs::File::open(&path)
-                .unwrap()
-                .write_all(&mut bytes)
-                .unwrap();
+            let bytes = Vec::new();
+            fs::File::open(&path).unwrap().write_all(&bytes).unwrap();
             Ok((None, bytes))
         }
         other => Err(format!("Not supported '{other}' file type")),

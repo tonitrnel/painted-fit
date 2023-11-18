@@ -1,11 +1,10 @@
 use crate::fit;
 
 pub(crate) struct BitReader {
-    bytes: Vec<fit::Value>,
-    byte_pos: usize,
-    bit_pos: usize,
+    bytes: Vec<usize>,
     per_size: usize,
-    available_bits: usize,
+    consumed: usize,
+    total: usize,
 }
 
 impl BitReader {
@@ -16,32 +15,35 @@ impl BitReader {
             vec![value]
         };
         let per_size = (fit::BaseType::from(&bytes[0]).size() * 8) as usize;
-        let available_bits = per_size * bytes.len();
+        let bytes = bytes
+            .iter()
+            .map(|it| it.try_as_usize().unwrap())
+            .collect::<Vec<_>>();
         Self {
-            bytes,
             per_size,
-            available_bits,
-            byte_pos: 0,
-            bit_pos: 0,
+            consumed: 0,
+            total: per_size * bytes.len(),
+            bytes,
         }
     }
     pub(crate) fn available(&self) -> bool {
-        self.available_bits > 0
+        self.consumed < self.total
     }
     pub(crate) fn next(&mut self) -> Option<u8> {
         if !self.available() {
+            // println!(
+            //     "bytes = {:?}, consumed = {}, total = {}",
+            //     self.bytes, self.consumed, self.total
+            // );
             return None;
         }
-        let bit = (self.bytes[self.byte_pos].try_as_usize().ok()? >> self.bit_pos & 0x01) as u8;
-        self.bit_pos += 1;
-        if self.bit_pos >= self.per_size {
-            self.bit_pos = 0;
-            self.byte_pos += 1;
-        }
-        self.available_bits -= 1;
+        let bit = (self.bytes[self.consumed / self.per_size] >> (self.consumed % self.per_size)
+            & 0x01) as u8;
+        self.consumed += 1;
         Some(bit)
     }
     pub(crate) fn read_bits(&mut self, len: usize) -> Option<usize> {
+        // println!("read len = {}", len);
         let mut value = 0usize;
         for i in 0..len {
             value |= (self.next()? as usize) << i;
@@ -54,6 +56,7 @@ impl BitReader {
 mod tests {
     use super::*;
 
+    #[derive(Debug)]
     struct Scenario {
         data: &'static [usize],
         base_type: fit::BaseType,
@@ -85,10 +88,10 @@ mod tests {
         ]));
         let values = &[0u8, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1];
         for (index, expected) in values.iter().enumerate() {
-            assert_eq!(reader.available_bits, values.len() - index);
+            assert_eq!(reader.consumed, index);
             assert!(reader.available());
             assert_eq!(Some(*expected), reader.next());
-            assert_eq!(reader.available_bits, values.len() - index - 1);
+            assert_eq!(reader.consumed, index + 1);
             assert_eq!(reader.available(), index + 1 != values.len());
         }
         let scenarios = vec![
@@ -129,12 +132,12 @@ mod tests {
                 values: &[0x76543210],
             },
         ];
-        for scenario in scenarios {
+        for (idx, scenario) in scenarios.iter().enumerate() {
             let mut reader = BitReader::new(scenario.to_value());
             for (index, value) in scenario.values.iter().enumerate() {
                 assert_eq!(
                     Some(*value),
-                    reader.read_bits(scenario.n_bits_to_read[index])
+                    reader.read_bits(scenario.n_bits_to_read[index]),
                 );
             }
         }

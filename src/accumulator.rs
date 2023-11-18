@@ -20,17 +20,13 @@ impl AccumulatedField {
     }
 }
 
-pub(crate) struct Accumulator {
+#[derive(Default)]
+pub struct Accumulator {
     messages: HashMap<u16, HashMap<u8, AccumulatedField>>,
 }
 
 impl Accumulator {
-    pub(crate) fn new() -> Accumulator {
-        Accumulator {
-            messages: HashMap::new(),
-        }
-    }
-    pub(crate) fn add(&mut self, msg_no: u16, field_no: u8, value: usize) {
+    pub fn add(&mut self, msg_no: u16, field_no: u8, value: usize) {
         if let Some(fields) = self.messages.get_mut(&msg_no) {
             fields.insert(field_no, AccumulatedField::new(value));
         } else {
@@ -39,13 +35,7 @@ impl Accumulator {
             self.messages.insert(msg_no, map);
         }
     }
-    pub(crate) fn accumulate(
-        &mut self,
-        msg_no: u16,
-        field_no: u8,
-        value: usize,
-        bits: u8,
-    ) -> usize {
+    pub fn accumulate(&mut self, msg_no: u16, field_no: u8, value: usize, bits: u8) -> usize {
         self.messages
             .get_mut(&msg_no)
             .and_then(|fields| fields.get_mut(&field_no))
@@ -59,7 +49,7 @@ mod tests {
     use super::*;
     #[test]
     fn it_works() {
-        let mut accumulator = Accumulator::new();
+        let mut accumulator = Accumulator::default();
         accumulator.add(0, 0, 0);
         assert_eq!(accumulator.accumulate(0, 0, 1, 8), 1);
 

@@ -1,49 +1,48 @@
 use calamine as xlsx;
-use calamine::DataType;
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
 macro_rules! split_csv_string ( ($value:expr) => ( {$value.split(',').map(|v| v.trim().to_string())} ););
 
 #[derive(Debug, Clone)]
-pub(crate) struct TypeValue {
-    pub(crate) name: String,
-    pub(crate) value: String,
-    pub(crate) comment: Option<String>,
+pub struct TypeValue {
+    pub name: String,
+    pub value: String,
+    pub comment: Option<String>,
 }
 #[derive(Debug, Clone)]
-pub(crate) struct Type {
-    pub(crate) type_name: String,
-    pub(crate) base_type: String,
-    pub(crate) values: Vec<TypeValue>,
+pub struct Type {
+    pub type_name: String,
+    pub base_type: String,
+    pub values: Vec<TypeValue>,
 }
 #[derive(Debug, Clone)]
-pub(crate) struct NestedMessageField {
-    pub(crate) field_name: String,
-    pub(crate) field_type: String,
-    pub(crate) array: Option<usize>,
-    pub(crate) components: Vec<(u8, MessageField)>,
-    pub(crate) scale: f64,
-    pub(crate) offset: f64,
-    pub(crate) units: String,
-    pub(crate) ref_field_name: String,
-    pub(crate) ref_field_value: String,
-    pub(crate) comment: Option<String>,
+pub struct NestedMessageField {
+    pub field_name: String,
+    pub field_type: String,
+    pub array: Option<usize>,
+    pub components: Vec<(u8, MessageField)>,
+    pub scale: f64,
+    pub offset: f64,
+    pub units: String,
+    pub ref_field_name: String,
+    pub ref_field_value: String,
+    pub comment: Option<String>,
     _raw_components: Vec<MessageComponent>,
 }
 #[derive(Debug, Clone)]
-pub(crate) struct MessageField {
-    pub(crate) field_no: u8,
-    pub(crate) field_name: String,
-    pub(crate) field_type: String,
-    pub(crate) array: Option<usize>,
-    pub(crate) components: Vec<(u8, MessageField)>,
-    pub(crate) scale: f64,
-    pub(crate) offset: f64,
-    pub(crate) units: String,
-    pub(crate) accumulate: bool,
-    pub(crate) comment: Option<String>,
-    pub(crate) sub_fields: Vec<NestedMessageField>,
+pub struct MessageField {
+    pub field_no: u8,
+    pub field_name: String,
+    pub field_type: String,
+    pub array: Option<usize>,
+    pub components: Vec<(u8, MessageField)>,
+    pub scale: f64,
+    pub offset: f64,
+    pub units: String,
+    pub accumulate: bool,
+    pub comment: Option<String>,
+    pub sub_fields: Vec<NestedMessageField>,
     _raw_components: Vec<MessageComponent>,
 }
 
@@ -58,21 +57,21 @@ struct MessageComponent {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Message {
-    pub(crate) name: String,
-    pub(crate) comment: Option<String>,
-    pub(crate) fields: Vec<MessageField>,
+pub struct Message {
+    pub name: String,
+    pub comment: Option<String>,
+    pub fields: Vec<MessageField>,
 }
-pub(crate) type Messages = Vec<Message>;
-pub(crate) type Types = Vec<Type>;
+pub type Messages = Vec<Message>;
+pub type Types = Vec<Type>;
 
-pub(crate) struct FitProfile {
-    pub(crate) messages: Messages,
-    pub(crate) types: Types,
+pub struct FitProfile {
+    pub messages: Messages,
+    pub types: Types,
 }
 
 type Sheet = xlsx::Range<xlsx::DataType>;
-type Row<'a> = &'a [DataType];
+type Row<'a> = &'a [xlsx::DataType];
 
 fn process_types(sheet: &Sheet) -> Types {
     let mut types: Types = Vec::new();
@@ -230,11 +229,18 @@ fn process_message(message: Message) -> Message {
     let mut accumulates: HashSet<String> = HashSet::new();
     for field in &mut fields {
         if !field._raw_components.is_empty() {
-            field.components = process_components(field, &field_map, &mut accumulates);
+            field.components =
+                process_components(&field._raw_components, &field_map, &mut accumulates);
             field._raw_components = Vec::new()
         }
+        for sub_field in &mut field.sub_fields {
+            if !sub_field._raw_components.is_empty() {
+                sub_field.components =
+                    process_components(&sub_field._raw_components, &field_map, &mut accumulates);
+                sub_field._raw_components = Vec::new()
+            }
+        }
     }
-    // println!("need accumulate components: {:?}", accumulates);
     Message {
         name,
         comment,
@@ -248,12 +254,12 @@ fn process_message(message: Message) -> Message {
     }
 }
 fn process_components(
-    field: &MessageField,
+    raw_components: &[MessageComponent],
     field_map: &HashMap<String, MessageField>,
     accumulates: &mut HashSet<String>,
 ) -> Vec<(u8, MessageField)> {
     let mut components = Vec::new();
-    for component in &field._raw_components {
+    for component in raw_components {
         let dest = field_map.get(&component.name).unwrap_or_else(|| {
             panic!(
                 "Cannot find '{}' field in '{}' message",
@@ -275,7 +281,7 @@ fn process_components(
                 units: component.units.to_owned(),
                 accumulate: component.accumulate,
                 sub_fields: dest.sub_fields.to_owned(),
-                components: process_components(dest, field_map, accumulates),
+                components: process_components(&dest._raw_components, field_map, accumulates),
                 _raw_components: Vec::new(),
                 comment: dest.comment.to_owned(),
             },
@@ -283,7 +289,7 @@ fn process_components(
     }
     components
 }
-pub(crate) fn process_profile(bytes: &[u8]) -> FitProfile {
+pub fn process_profile(bytes: &[u8]) -> FitProfile {
     use xlsx::Reader;
     let cursor = std::io::Cursor::new(bytes);
     let mut excel = xlsx::open_workbook_auto_from_rs(cursor).unwrap();

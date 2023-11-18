@@ -20,6 +20,7 @@ macro_rules! fit_value_covert {
 }
 
 #[derive(Debug, Clone)]
+#[allow(unused)]
 struct FitFileHeader {
     pub header_size: u32,
     pub protocol_version: u8,
@@ -93,11 +94,14 @@ struct FitDefinitionMessage {
 struct FitDataMessage {
     global_message_number: u16,
     time_offset: Option<u8>,
+    // HashMap<field_definition_number, Value>
     fields: HashMap<u8, fit::Value>,
-    developer_fields: Vec<fit::Value>,
+    // HashMap<developer_data_index, HashMap<field_definition_number, Value>>
+    developer_fields: HashMap<u8, HashMap<u8, fit::Value>>,
 }
 
 #[derive(Debug, Clone)]
+#[allow(unused)]
 struct FitDeveloperDataDefinition {
     developer_id: Option<fit::Value>,
     application_id: Option<fit::Value>,
@@ -114,6 +118,7 @@ pub struct Decoder<'input> {
     reader: ByteReader<'input>,
     defs: HashMap<u8, Arc<FitDefinitionMessage>>,
     dev_data_defs: HashMap<u8, FitDeveloperDataDefinition>,
+    dev_data: HashMap<String, HashMap<u8, fit::Value>>,
     timestamp_ref: Option<u32>,
     errors: Vec<ErrorKind>,
 }
@@ -127,6 +132,7 @@ impl<'input> Decoder<'input> {
             reader: bytes.into(),
             defs: HashMap::new(),
             dev_data_defs: HashMap::new(),
+            dev_data: HashMap::new(),
             errors: Vec::new(),
             timestamp_ref: None,
         }
@@ -189,16 +195,19 @@ impl<'input> Decoder<'input> {
         }
         true
     }
+    fn crc_valid(&mut self, start: usize, end: usize) -> bool {
+        self.reader.read_next_u16(false) == crc::crc_16(&self.reader[start..end])
+    }
     /// 阅读信息
-    pub fn read(&mut self) -> ParserResult<(Vec<ErrorKind>, Messages)> {
+    pub fn decode(&mut self) -> ParserResult<(Vec<ErrorKind>, Messages)> {
         self.reader.reset();
         let mut messages: Messages = HashMap::new();
         while !self.reader.is_end() {
-            self.read_next_record(&mut messages)?;
+            self.decode_next_file(&mut messages)?;
         }
         Ok((self.errors.to_owned(), messages))
     }
-    fn read_next_record(&mut self, messages: &mut Messages) -> ParserResult<()> {
+    fn decode_next_file(&mut self, messages: &mut Messages) -> ParserResult<()> {
         let start = self.reader.offset();
         if !Decoder::is_fit(&self.reader[start..]) {
             return Err(ErrorKind::InvalidFitFile);
@@ -206,37 +215,36 @@ impl<'input> Decoder<'input> {
         let header = self.read_file_header();
         let end = start + header.header_size as usize + header.data_size as usize;
         while self.reader.offset() < end {
-            let message = self.read_fit_message()?;
-            match message {
-                FitMessage::Definition(message) => {
-                    self.defs
-                        .insert(message.local_message_number, Arc::new(message));
+            match self.decode_next_record() {
+                Ok(Some((k, v))) => {
+                    messages.entry(k).or_default().push(v);
                 }
-                FitMessage::Data(message) => {
-                    let result = match self.decode_message(message) {
-                        Ok(r) => r,
-                        Err(e) => {
-                            self.errors.push(e);
-                            continue;
-                        }
-                    };
-                    let (name, record) = if let Some(result) = result {
-                        result
-                    } else {
-                        continue;
-                    };
-                    if let Some(records) = messages.get_mut(&name) {
-                        records.push(record);
-                    } else {
-                        messages.insert(name, vec![record]);
-                    }
-                }
+                Ok(None) => continue,
+                Err(e) => return Err(e),
             }
         }
-        if self.reader.read_next_u16(false) != crc::crc_16(&self.reader[start..end]) {
-            return Err(ErrorKind::CRCInvalid);
+        if !self.crc_valid(start, end) {
+            return Err(ErrorKind::InvalidCRC);
         }
         Ok(())
+    }
+
+    fn decode_next_record(&mut self) -> ParserResult<Option<(String, Record)>> {
+        let message = self.read_message()?;
+        match message {
+            FitMessage::Definition(message) => {
+                self.defs
+                    .insert(message.local_message_number, Arc::new(message));
+                Ok(None)
+            }
+            FitMessage::Data(message) => match self.decode_message(message) {
+                Ok((k, v)) => Ok(Some((k, v))),
+                Err(e) => {
+                    self.errors.push(e);
+                    Ok(None)
+                }
+            },
+        }
     }
 
     /// read message header
@@ -281,10 +289,10 @@ impl<'input> Decoder<'input> {
                 time_offset: None,
             })
         } else {
-            Err(ErrorKind::MessageHeaderInvalid)
+            Err(ErrorKind::InvalidMessageHeader)
         }
     }
-    fn read_fit_message(&mut self) -> ParserResult<FitMessage> {
+    fn read_message(&mut self) -> ParserResult<FitMessage> {
         let header = self.read_message_header()?;
         Ok(match &header.message_type {
             FitMessageType::Definition => {
@@ -314,22 +322,37 @@ impl<'input> Decoder<'input> {
                 }
                 // skip invalid field
                 Err(e) => {
-                    self.errors.push(e);
+                    self.errors.push(ErrorKind::DecodeFieldFailed {
+                        message_no: def.global_message_number,
+                        field_no: field_def.field_definition_number,
+                        reason: e.to_string(),
+                    });
                 }
             }
         }
 
-        let mut developer_fields = Vec::new();
+        let mut developer_fields = HashMap::new();
 
         for field_def in &def.developer_field_definitions {
-            let value = self
-                .read_field_value(
-                    field_def.size as usize,
-                    fit::BaseType::Byte,
-                    def.architecture.is_big_endian(),
-                )
-                .unwrap();
-            developer_fields.push(value);
+            let value = match self.read_field_value(
+                field_def.size as usize,
+                fit::BaseType::Byte,
+                def.architecture.is_big_endian(),
+            ) {
+                Ok(v) => v,
+                Err(e) => {
+                    self.errors.push(ErrorKind::DecodeDeveloperFieldFailed {
+                        message_no: def.global_message_number,
+                        data_index: field_def.developer_data_index,
+                        reason: e.to_string(),
+                    });
+                    continue;
+                }
+            };
+            developer_fields
+                .entry(field_def.developer_data_index)
+                .or_insert_with(HashMap::new)
+                .insert(field_def.field_number, value);
         }
         Ok(FitDataMessage {
             fields,
@@ -348,7 +371,7 @@ impl<'input> Decoder<'input> {
         if size % base_type.size() as usize != 0 {
             return Err(ErrorKind::SizeMismatch {
                 field_size: size,
-                base_type_size: base_type.size() as usize,
+                base_type_size: base_type.size(),
             });
         }
         let reader = &mut self.reader;
@@ -392,7 +415,11 @@ impl<'input> Decoder<'input> {
             Value::Array(values)
         };
         if !value.is_valid() {
-            Err(ErrorKind::FieldValueInvalid(value))
+            Err(ErrorKind::InvalidFieldValue {
+                value,
+                base_type,
+                invalid: base_type.invalid(),
+            })
         } else {
             Ok(value)
         }
@@ -476,6 +503,7 @@ impl<'input> Decoder<'input> {
         } else {
             Vec::new()
         };
+
         Ok(FitDefinitionMessage {
             architecture,
             local_message_number: header.local_message_number,
@@ -484,12 +512,9 @@ impl<'input> Decoder<'input> {
             developer_field_definitions,
         })
     }
-    fn decode_message(
-        &mut self,
-        message: FitDataMessage,
-    ) -> ParserResult<Option<(String, Record)>> {
+    fn decode_message(&mut self, message: FitDataMessage) -> ParserResult<(String, Record)> {
         use crate::profile::{messages, types};
-        let mut accumulator = crate::accumulator::Accumulator::new();
+        let mut accumulator = crate::accumulator::Accumulator::default();
         let msg_ty = types::MesgNum::try_from(&fit::Value::UInt16(message.global_message_number))
             .map_err(|_| {
             ErrorKind::GlobalDefinitionMessageNotFound(message.global_message_number)
@@ -510,6 +535,8 @@ impl<'input> Decoder<'input> {
                 },
             )
             .map_err(|err| ErrorKind::DecodeMessageFailed {
+                message: msg_ty.to_string(),
+                field_no: *field_def_number,
                 reason: err.to_owned(),
             }) {
                 self.errors.push(e)
@@ -518,6 +545,44 @@ impl<'input> Decoder<'input> {
             // common timestamp field, used in combination with the compressed timestamp
             if field_def_number == &253 {
                 self.timestamp_ref = Some(val.try_as_usize().unwrap() as u32)
+            }
+        }
+
+        for (developer_data_index, fields) in message.developer_fields {
+            let developer_data_def = if let Some(r) = self.dev_data_defs.get(&developer_data_index)
+            {
+                r
+            } else {
+                self.errors
+                    .push(ErrorKind::MissingDeveloperDataDef(developer_data_index));
+                continue;
+            };
+            for (field_def_number, val) in fields {
+                let val = if let fit::Value::Byte(r) = val { r } else { 0 };
+                let field_def = if let Some(r) = developer_data_def.field_map.get(&field_def_number)
+                {
+                    r
+                } else {
+                    self.errors
+                        .push(ErrorKind::MissingDeveloperFieldDescription(
+                            developer_data_index,
+                            field_def_number,
+                        ));
+                    continue;
+                };
+                let base_type = field_def
+                    .get("fit_base_type_id")
+                    .map(|it| it.to_string())
+                    .unwrap();
+                let value = match base_type.as_str() {
+                    "uint8" => fit::Value::UInt8(val),
+                    "float32" => fit::Value::Float32(val as f32),
+                    _ => fit::Value::Byte(val),
+                };
+                self.dev_data
+                    .entry(msg_ty.to_string())
+                    .or_default()
+                    .insert(field_def_number, value);
             }
         }
         if message.time_offset.is_some() {
@@ -580,7 +645,7 @@ impl<'input> Decoder<'input> {
                     field_map: HashMap::new(),
                 },
             );
-            Ok(None)
+            Ok((msg_ty.to_string(), developer_data_map))
         } else if msg_ty == types::MesgNum::FieldDescription {
             let field_def_names = [
                 "developer_data_index",
@@ -630,17 +695,17 @@ impl<'input> Decoder<'input> {
                 fit_value_covert!(field_description_map.get("field_definition_number"), UInt8);
             if let Some(def) = self.dev_data_defs.get_mut(&developer_data_index) {
                 def.field_map
-                    .insert(field_definition_number, field_description_map);
+                    .insert(field_definition_number, field_description_map.clone());
             }
-            Ok(None)
+            Ok((msg_ty.to_string(), field_description_map))
         } else {
-            Ok(Some((
+            Ok((
                 msg_ty.to_string(),
                 message_map
                     .into_iter()
                     .map(|(k, v)| (k, v.value))
                     .collect::<HashMap<_, _>>(),
-            )))
+            ))
         }
     }
     fn update_time_offset(&mut self, offset: u8) -> ParserResult<u32> {

@@ -1,27 +1,23 @@
 [package]
 name = "fit"
-description = "Parse Garmin Fit files"
+description = "Parse Fit protocol files"
 version = "0.1.0"
 edition = "2021"
-authors = ["Tonitrnel"]
+authors = ["Tonitrnel <tonitrnel@ptdg.dev>"]
 keywords = ["fit", "parser", "ant", "garmin", "serde"]
 repository = "https://github.com/tonitrnel/painted-fit"
 license = "MIT"
-include = [
-    "src/**/*.rs",
-    "Cargo.toml",
-    "LICENSE"
-]
+readme = "README.md"
 
 [lib]
 name = "fit"
 path = "src/lib.rs"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 chrono = "0.4.31"
 thiserror = "1.0.50"
+serde = {version = "1.0.192", features = ["serde_derive"]}
+serde_json = "1.0.108"
 
 [workspace]
 members = [

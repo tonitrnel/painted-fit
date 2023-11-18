@@ -1,5 +1,5 @@
-pub(crate) mod messages;
-pub(crate) mod types;
+pub mod messages;
+pub mod types;
 mod version;
 
 pub use version::VERSION;

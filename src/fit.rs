@@ -1,4 +1,6 @@
 use chrono::{DateTime, Utc};
+use serde::ser::SerializeSeq;
+use serde::{Serialize, Serializer};
 use std::fmt;
 
 #[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
@@ -373,6 +375,42 @@ impl From<&Value> for BaseType {
             Value::DateTime(_) => BaseType::UInt32,
             Value::Bool(_) => BaseType::Byte,
             Value::Array(arr) => BaseType::from(&arr[0]),
+        }
+    }
+}
+
+impl Serialize for Value {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            Value::Enum(val) => serializer.serialize_u8(*val),
+            Value::SInt8(val) => serializer.serialize_i8(*val),
+            Value::UInt8(val) => serializer.serialize_u8(*val),
+            Value::SInt16(val) => serializer.serialize_i16(*val),
+            Value::UInt16(val) => serializer.serialize_u16(*val),
+            Value::SInt32(val) => serializer.serialize_i32(*val),
+            Value::UInt32(val) => serializer.serialize_u32(*val),
+            Value::String(val) => serializer.serialize_str(val),
+            Value::Float32(val) => serializer.serialize_f32(*val),
+            Value::Float64(val) => serializer.serialize_f64(*val),
+            Value::UInt8z(val) => serializer.serialize_u8(*val),
+            Value::UInt16z(val) => serializer.serialize_u16(*val),
+            Value::UInt32z(val) => serializer.serialize_u32(*val),
+            Value::Byte(val) => serializer.serialize_u8(*val),
+            Value::SInt64(val) => serializer.serialize_i64(*val),
+            Value::UInt64(val) => serializer.serialize_u64(*val),
+            Value::UInt64z(val) => serializer.serialize_u64(*val),
+            Value::DateTime(val) => serializer.serialize_str(&val.format("%+").to_string()),
+            Value::Bool(val) => serializer.serialize_bool(*val),
+            Value::Array(arr) => {
+                let mut seq = serializer.serialize_seq(Some(arr.len()))?;
+                for item in arr {
+                    seq.serialize_element(item)?;
+                }
+                seq.end()
+            }
         }
     }
 }
