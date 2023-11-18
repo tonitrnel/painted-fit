@@ -1,0 +1,31 @@
+use fit::decoder::Decoder;
+mod data;
+
+#[test]
+fn is_fit() {
+    assert!(Decoder::is_fit(&data::FIT_FILE_SHORT))
+}
+
+#[test]
+fn not_is_fit() {
+    assert!(!Decoder::is_fit(&[]));
+}
+
+#[test]
+fn len_length_le_14() {
+    assert!(!Decoder::is_fit(&[0xE]));
+}
+#[test]
+fn header_size_not_eq_14_or_12() {
+    assert!(!Decoder::is_fit(&[
+        0xFF, 0x10, 0xD9, 0x07, 0x00, 0x00, 0x00, 0x00, 0x2E, 0x46, 0x49, 0x54, 0x91, 0x33, 0x00,
+        0x00
+    ]))
+}
+#[test]
+fn data_type_not_eq_fit() {
+    assert!(!Decoder::is_fit(&[
+        0x0E, 0x10, 0xD9, 0x07, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x91, 0x33, 0x00,
+        0x00
+    ]))
+}

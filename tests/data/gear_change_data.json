@@ -1,0 +1,335 @@
+[
+  {
+    "timestamp": 1024873717,
+    "rearGearNum": 5,
+    "rearGear": 24,
+    "frontGearNum": 255,
+    "frontGear": 22,
+    "data": 385816581,
+    "gearChangeData": 385816581
+  },
+  {
+    "timestamp": 1024873760,
+    "rearGearNum": 6,
+    "rearGear": 21,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16717062,
+    "gearChangeData": 16717062
+  },
+  {
+    "timestamp": 1024873819,
+    "rearGearNum": 7,
+    "rearGear": 19,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16716551,
+    "gearChangeData": 16716551
+  },
+  {
+    "timestamp": 1024873850,
+    "rearGearNum": 6,
+    "rearGear": 21,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16717062,
+    "gearChangeData": 16717062
+  },
+  {
+    "timestamp": 1024874601,
+    "rearGearNum": 7,
+    "rearGear": 19,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16716551,
+    "gearChangeData": 16716551
+  },
+  {
+    "timestamp": 1024874624,
+    "rearGearNum": 8,
+    "rearGear": 17,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16716040,
+    "gearChangeData": 16716040
+  },
+  {
+    "timestamp": 1024874694,
+    "rearGearNum": 7,
+    "rearGear": 19,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16716551,
+    "gearChangeData": 16716551
+  },
+  {
+    "timestamp": 1024874698,
+    "rearGearNum": 6,
+    "rearGear": 21,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16717062,
+    "gearChangeData": 16717062
+  },
+  {
+    "timestamp": 1024874727,
+    "rearGearNum": 7,
+    "rearGear": 19,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16716551,
+    "gearChangeData": 16716551
+  },
+  {
+    "timestamp": 1024874755,
+    "rearGearNum": 8,
+    "rearGear": 17,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16716040,
+    "gearChangeData": 16716040
+  },
+  {
+    "timestamp": 1024874824,
+    "rearGearNum": 7,
+    "rearGear": 19,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16716551,
+    "gearChangeData": 16716551
+  },
+  {
+    "timestamp": 1024874829,
+    "rearGearNum": 6,
+    "rearGear": 21,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16717062,
+    "gearChangeData": 16717062
+  },
+  {
+    "timestamp": 1024874864,
+    "rearGearNum": 7,
+    "rearGear": 19,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16716551,
+    "gearChangeData": 16716551
+  },
+  {
+    "timestamp": 1024874913,
+    "rearGearNum": 6,
+    "rearGear": 21,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16717062,
+    "gearChangeData": 16717062
+  },
+  {
+    "timestamp": 1024874927,
+    "rearGearNum": 4,
+    "rearGear": 27,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16718596,
+    "gearChangeData": 16718596
+  },
+  {
+    "timestamp": 1024875097,
+    "rearGearNum": 5,
+    "rearGear": 24,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16717829,
+    "gearChangeData": 16717829
+  },
+  {
+    "timestamp": 1024875097,
+    "rearGearNum": 6,
+    "rearGear": 21,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16717062,
+    "gearChangeData": 16717062
+  },
+  {
+    "timestamp": 1024875111,
+    "rearGearNum": 5,
+    "rearGear": 24,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16717829,
+    "gearChangeData": 16717829
+  },
+  {
+    "timestamp": 1024875126,
+    "rearGearNum": 4,
+    "rearGear": 27,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16718596,
+    "gearChangeData": 16718596
+  },
+  {
+    "timestamp": 1024875251,
+    "rearGearNum": 3,
+    "rearGear": 31,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16719619,
+    "gearChangeData": 16719619
+  },
+  {
+    "timestamp": 1024875265,
+    "rearGearNum": 4,
+    "rearGear": 27,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16718596,
+    "gearChangeData": 16718596
+  },
+  {
+    "timestamp": 1024875271,
+    "rearGearNum": 5,
+    "rearGear": 24,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16717829,
+    "gearChangeData": 16717829
+  },
+  {
+    "timestamp": 1024875291,
+    "rearGearNum": 6,
+    "rearGear": 21,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16717062,
+    "gearChangeData": 16717062
+  },
+  {
+    "timestamp": 1024875364,
+    "rearGearNum": 7,
+    "rearGear": 19,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16716551,
+    "gearChangeData": 16716551
+  },
+  {
+    "timestamp": 1024875388,
+    "rearGearNum": 8,
+    "rearGear": 17,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16716040,
+    "gearChangeData": 16716040
+  },
+  {
+    "timestamp": 1024875423,
+    "rearGearNum": 9,
+    "rearGear": 15,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16715529,
+    "gearChangeData": 16715529
+  },
+  {
+    "timestamp": 1024875515,
+    "rearGearNum": 8,
+    "rearGear": 17,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16716040,
+    "gearChangeData": 16716040
+  },
+  {
+    "timestamp": 1024875589,
+    "rearGearNum": 7,
+    "rearGear": 19,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16716551,
+    "gearChangeData": 16716551
+  },
+  {
+    "timestamp": 1024875615,
+    "rearGearNum": 8,
+    "rearGear": 17,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16716040,
+    "gearChangeData": 16716040
+  },
+  {
+    "timestamp": 1024875616,
+    "rearGearNum": 9,
+    "rearGear": 15,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16715529,
+    "gearChangeData": 16715529
+  },
+  {
+    "timestamp": 1024875621,
+    "rearGearNum": 10,
+    "rearGear": 13,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16715018,
+    "gearChangeData": 16715018
+  },
+  {
+    "timestamp": 1024875622,
+    "rearGearNum": 11,
+    "rearGear": 11,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16714507,
+    "gearChangeData": 16714507
+  },
+  {
+    "timestamp": 1024875651,
+    "rearGearNum": 9,
+    "rearGear": 15,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16715529,
+    "gearChangeData": 16715529
+  },
+  {
+    "timestamp": 1024875658,
+    "rearGearNum": 8,
+    "rearGear": 17,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16716040,
+    "gearChangeData": 16716040
+  },
+  {
+    "timestamp": 1024875658,
+    "rearGearNum": 7,
+    "rearGear": 19,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16716551,
+    "gearChangeData": 16716551
+  },
+  {
+    "timestamp": 1024875665,
+    "rearGearNum": 6,
+    "rearGear": 21,
+    "frontGearNum": 255,
+    "frontGear": null,
+    "data": 16717062,
+    "gearChangeData": 16717062
+  },
+  {
+    "timestamp": 1024875695,
+    "rearGearNum": 6,
+    "rearGear": 21,
+    "frontGearNum": 255,
+    "frontGear": 22,
+    "data": 385815814,
+    "gearChangeData": 385815814
+  }
+]
