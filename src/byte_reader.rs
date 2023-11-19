@@ -1,3 +1,4 @@
+use crate::error::ErrorKind;
 use std::ops::{Index, Range, RangeFrom, RangeTo};
 
 pub(crate) struct ByteReader<'input> {
@@ -34,6 +35,16 @@ impl<'input> ByteReader<'input> {
         self.offset
     }
     pub(crate) fn read_bytes(&mut self, len: usize) -> &'input [u8] {
+        if self.offset + len > self.bytes.len() {
+            panic!(
+                "{:?}",
+                ErrorKind::OutOfBoundsRead {
+                    offset: self.offset,
+                    requested_len: len,
+                    remaining_len: self.bytes.len().saturating_sub(self.offset),
+                }
+            );
+        }
         let bytes = &self.bytes[self.offset..self.offset + len];
         self.offset += len;
         bytes

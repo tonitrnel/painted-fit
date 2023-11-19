@@ -124,6 +124,7 @@ pub struct Decoder<'input> {
 }
 
 pub type Record = HashMap<&'static str, fit::Value>;
+
 pub type Messages = HashMap<String, Vec<Record>>;
 
 impl<'input> Decoder<'input> {
@@ -553,8 +554,9 @@ impl<'input> Decoder<'input> {
             {
                 r
             } else {
-                self.errors
-                    .push(ErrorKind::MissingDeveloperDataDef(developer_data_index));
+                self.errors.push(ErrorKind::MissingDeveloperDataDef {
+                    developer_data_index,
+                });
                 continue;
             };
             for (field_def_number, val) in fields {
@@ -564,10 +566,10 @@ impl<'input> Decoder<'input> {
                     r
                 } else {
                     self.errors
-                        .push(ErrorKind::MissingDeveloperFieldDescription(
+                        .push(ErrorKind::MissingDeveloperFieldDescription {
                             developer_data_index,
-                            field_def_number,
-                        ));
+                            field_no: field_def_number,
+                        });
                     continue;
                 };
                 let base_type = field_def
@@ -590,7 +592,7 @@ impl<'input> Decoder<'input> {
                 .update_time_offset(message.time_offset.unwrap())
                 .and_then(|timestamp| {
                     chrono::DateTime::<chrono::Utc>::from_timestamp(timestamp as i64, 0)
-                        .ok_or(ErrorKind::InvalidTimestamp(timestamp))
+                        .ok_or(ErrorKind::InvalidTimestamp { timestamp })
                         .map(fit::Value::DateTime)
                 });
             match result {

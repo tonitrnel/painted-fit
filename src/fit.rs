@@ -2,7 +2,6 @@ use chrono::{DateTime, Utc};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 use std::fmt;
-
 #[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
 pub enum BaseType {
     Enum = 0x00,
@@ -47,8 +46,8 @@ impl BaseType {
         }
     }
 
-    #[allow(unused)]
-    pub fn invalid(&self) -> usize {
+    #[allow(unused, overflowing_literals)]
+    pub(crate) fn invalid(&self) -> usize {
         match self {
             BaseType::Enum => 0xFF,
             BaseType::SInt8 => 0x7F,
@@ -193,8 +192,10 @@ pub enum Value {
     Bool(bool),
     Array(Vec<Self>),
 }
+
 impl Value {
-    pub fn is_valid(&self) -> bool {
+    #[allow(unused, overflowing_literals)]
+    pub(crate) fn is_valid(&self) -> bool {
         match self {
             Value::Enum(val) => *val != 0xFF,
             Value::SInt8(val) => *val != 0x7F,

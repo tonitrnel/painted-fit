@@ -1,4 +1,6 @@
 use crate::fit;
+use serde::ser::SerializeStruct;
+use serde::{Serialize, Serializer};
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -58,11 +60,55 @@ pub enum ErrorKind {
     BaseTypeMismatch { reason: String },
     #[error("Invalid compressed timestamp: missing timestamp reference.")]
     MissingTimestampRef,
-    #[error("Invalid timestamp {0}: cannot convert to DateTime")]
-    InvalidTimestamp(u32),
-    #[error("Missing developer data definition for ID {0}")]
-    MissingDeveloperDataDef(u8),
-    #[error("Missing developer field description for developer data ID {0}, field ID {1}")]
-    MissingDeveloperFieldDescription(u8, u8),
+    #[error("Invalid timestamp {timestamp}: cannot convert to DateTime")]
+    InvalidTimestamp { timestamp: u32 },
+    #[error("Missing developer data definition for developer data index {developer_data_index}")]
+    MissingDeveloperDataDef { developer_data_index: u8 },
+    #[error("Missing developer field description for developer data index {developer_data_index}, field {field_no}")]
+    MissingDeveloperFieldDescription {
+        developer_data_index: u8,
+        field_no: u8,
+    },
 }
 pub type ParserResult<T> = Result<T, ErrorKind>;
+
+impl ErrorKind {
+    fn kind(&self) -> &'static str {
+        use ErrorKind::*;
+        match self {
+            InvalidFitFile => "InvalidFitFile",
+            InvalidCRC => "InvalidCRC",
+            OutOfBoundsRead { .. } => "OutOfBoundsRead",
+            ByteConversionError { .. } => "ByteConversionError",
+            InvalidMessageHeader => "InvalidMessageHeader",
+            InvalidFieldValue { .. } => "InvalidFieldValue",
+            DecodeFieldFailed { .. } => "DecodeFieldFailed",
+            DecodeDeveloperFieldFailed { .. } => "DecodeDeveloperFieldFailed",
+            SizeMismatch { .. } => "SizeMismatch",
+            LocalDefinitionMessageNotFound(_) => "LocalDefinitionMessageNotFound",
+            GlobalDefinitionMessageNotFound(_) => "GlobalDefinitionMessageNotFound",
+            UnknownMessage(_) => "UnknownMessage",
+            InvalidDeveloperField { .. } => "InvalidDeveloperField",
+            DecodeMessageFailed { .. } => "DecodeMessageFailed",
+            BaseTypeMismatch { .. } => "BaseTypeMismatch",
+            MissingTimestampRef => "MissingTimestampRef",
+            InvalidTimestamp { .. } => "InvalidTimestamp",
+            MissingDeveloperDataDef { .. } => "MissingDeveloperDataDef",
+            MissingDeveloperFieldDescription { .. } => "MissingDeveloperFieldDescription",
+        }
+    }
+}
+
+impl Serialize for ErrorKind {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut builder = serializer.serialize_struct("Error", 2).unwrap();
+        builder.serialize_field("kind", self.kind()).unwrap();
+        builder
+            .serialize_field("message", &self.to_string())
+            .unwrap();
+        builder.end()
+    }
+}
