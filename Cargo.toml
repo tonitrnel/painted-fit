@@ -1,10 +1,10 @@
 [package]
 name = "fit"
-description = "Parse Fit protocol files"
+description = "Fit protocol file decoder"
 version = "0.1.0"
 edition = "2021"
 authors = ["Tonitrnel <tonitrnel@ptdg.dev>"]
-keywords = ["fit", "parser", "ant", "garmin", "serde"]
+keywords = ["fit", "decoder", "ant", "garmin", "serde"]
 repository = "https://github.com/tonitrnel/painted-fit"
 license = "MIT"
 readme = "README.md"
@@ -16,11 +16,12 @@ path = "src/lib.rs"
 [dependencies]
 chrono = "0.4.31"
 thiserror = "1.0.50"
-serde = {version = "1.0.192", features = ["serde_derive"]}
+serde = { version = "1.0.192", features = ["derive"] }
 serde_json = "1.0.108"
 
 [workspace]
 members = [
     "tools/profile-gen",
-    "examples/*"
+    "examples/*",
+    "wasm-binding"
 ]

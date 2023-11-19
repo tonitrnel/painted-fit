@@ -9,14 +9,10 @@ fn main() {
     let mut decoder = Decoder::new(&buffer);
     println!("is_fit = {}", Decoder::is_fit(&buffer));
     println!("check_integrity = {}", decoder.check_integrity());
-    let (_, messages) = decoder.read().unwrap();
+    let (errors, messages) = decoder.decode().unwrap();
     let records = messages.get("record").unwrap();
+    println!("errors = {:#?}", errors);
+    println!("file id = {:#?}", messages.get("file_id").unwrap());
     println!("record size = {}", records.len());
     println!("record = {:#?}", records[0])
-    // println!("{:#?}", messages);
-    // for (name, records) in messages {
-    //     println!("name = {name}");
-    //     println!("messages = {:?}", records);
-    //     println!("===================================================");
-    // }
 }
