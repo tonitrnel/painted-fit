@@ -29,7 +29,7 @@
 该项目 `profile` 目录下的 `messages.rs`、`types.rs`、`version.rs` 由工具自动生成，运行该工具的命令为：
 
 ```shell
-run --package profile-gen --bin profile-gen -- -p "<FitSDKRelease_xx.xxx.xx.zip>"
+cargo run --package profile-gen --bin profile-gen -- -p "<FitSDKRelease_xx.xxx.xx.zip>"
 ```
 
 `FitSDKRelease` 可在 Garmin 官方开发者网站下载，网站地址是：[https://developer.garmin.com/fit/download/](https://developer.garmin.com/fit/download/)

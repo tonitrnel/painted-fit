@@ -6,6 +6,7 @@ use clap::Parser;
 use lazy_static::lazy_static;
 use std::fs;
 use std::io::{Read, Write};
+use std::path::Path;
 
 lazy_static! {
     pub(crate) static ref ROOT_DIR: std::path::PathBuf = std::env::current_dir().unwrap();
@@ -65,7 +66,16 @@ fn main() {
 
 fn read_profile_file(path: &str) -> Result<(Option<String>, Vec<u8>), String> {
     let path = {
-        let path = std::path::PathBuf::from(path);
+        let path = if path.starts_with("~/") {
+            let home = std::env::var("HOME")
+                .or_else(|_| std::env::var("USERPROFILE"))
+                .ok()
+                .unwrap();
+            let trimmed_path = &path[2..];
+            Path::new(&home).join(trimmed_path).to_path_buf()
+        } else {
+            std::path::PathBuf::from(path)
+        };
         let path = if path.is_absolute() {
             path
         } else {
@@ -96,7 +106,15 @@ fn read_profile_file(path: &str) -> Result<(Option<String>, Vec<u8>), String> {
                 .map(|it| it.to_string())
                 .unwrap();
             let file = archive.by_name(&name).unwrap();
-            let version = extract_sdk_version(name.split('/').collect::<Vec<_>>()[0]);
+            let version = name
+                .split('/')
+                .next()
+                .and_then(|first_part| extract_sdk_version(first_part))
+                .or_else(|| {
+                    path.file_name()
+                        .and_then(|it| it.to_str())
+                        .and_then(|it| extract_sdk_version(it.trim_end_matches(".zip")))
+                });
             Ok((
                 version,
                 file.bytes().map(|byte| byte.unwrap()).collect::<Vec<_>>(),
